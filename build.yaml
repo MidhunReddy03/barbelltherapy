@@ -1,0 +1,8 @@
+targets:
+  $default:
+    builders:
+      drift:
+        options:
+          # Store DateTime values as ISO-8601 TEXT in local time so timestamps
+          # survive backup/restore and stay readable in the SQLite file.
+          store_date_time_values_as_text: true

@@ -1,0 +1,12 @@
+{
+  "name": "barbell-therapy-web",
+  "version": "1.0.0",
+  "description": "Barbell Therapy Gym Management Web App",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

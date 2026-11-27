@@ -103,6 +103,91 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     return _gymNameError == null && _gymPhoneError == null;
   }
 
+  Future<void> _syncFromCloudDialog() async {
+    final service = ref.read(cloudSyncServiceProvider);
+    final wsCtrl = TextEditingController(text: 'barbell-therapy');
+    final passCtrl = TextEditingController();
+    final urlCtrl = TextEditingController(text: service.resolveDefaultUrl());
+    bool busy = false;
+    String? err;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Sync from Cloud'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Enter the same Gym Sync ID and Passcode used on your other device.',
+                style: TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: wsCtrl,
+                decoration: const InputDecoration(labelText: 'Gym Sync ID'),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: passCtrl,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Sync Passcode'),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: urlCtrl,
+                decoration: const InputDecoration(labelText: 'Server URL'),
+              ),
+              if (err != null) ...[
+                const SizedBox(height: 8),
+                Text(err!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: busy ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: busy
+                  ? null
+                  : () async {
+                      setDialogState(() {
+                        busy = true;
+                        err = null;
+                      });
+                      try {
+                        await service.connect(
+                          serverUrl: urlCtrl.text.trim(),
+                          workspaceId: wsCtrl.text.trim(),
+                          passcode: passCtrl.text.trim(),
+                        );
+                        // Ensure onboarding marks complete if synced gym had it set,
+                        // or mark complete if workspace already has plans/members.
+                        final settings = ref.read(settingsRepositoryProvider);
+                        final done = await settings.get(SettingKeys.onboardingComplete);
+                        if (done != '1') {
+                          await settings.set(SettingKeys.onboardingComplete, '1');
+                        }
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      } catch (e) {
+                        setDialogState(() {
+                          busy = false;
+                          err = e.toString().replaceFirst('Exception: ', '');
+                        });
+                      }
+                    },
+              child: Text(busy ? 'Syncing…' : 'Sync & Open'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<String?> _copyToAppStorage(XFile? picked, String prefix) async {
     // AppImage persists files on Android and data URIs on web; QR and
     // logo must stay lossless, so no compression here.
@@ -255,7 +340,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Welcome to GymDesk 👋', style: theme.textTheme.titleLarge),
+                  Text('Welcome to Barbell Therapy 👋', style: theme.textTheme.titleLarge),
                   const SizedBox(height: 8),
                   Row(
                     children: List.generate(4, (i) {
@@ -324,6 +409,31 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        SectionCard(
+          onTap: _syncFromCloudDialog,
+          borderColor: theme.colorScheme.primary.withValues(alpha: 0.45),
+          child: Row(
+            children: [
+              Icon(Icons.cloud_download_outlined,
+                  color: theme.colorScheme.primary, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Already set up on another device?',
+                        style: theme.textTheme.titleMedium
+                            ?.copyWith(fontSize: 14)),
+                    Text('Tap to sync your gym from Cloud',
+                        style: theme.textTheme.bodySmall),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: theme.colorScheme.primary),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
         Text('Tell us about your gym', style: theme.textTheme.titleMedium),
         const SizedBox(height: 16),
         TextFormField(

@@ -169,33 +169,66 @@ class _Header extends StatelessWidget {
             ],
           ),
         ),
-        // Notifications button (44x44 card with dot)
-        InkWell(
-          onTap: () => context.go('/reminders'),
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: AppTheme.cardDecoration(),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                const Icon(Icons.notifications_none, size: 22, color: AppColors.textPrimaryDark),
-                Positioned(
-                  top: 10,
-                  right: 11,
+        // Sync & Notifications buttons
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Consumer(
+              builder: (context, ref, _) {
+                final sync = ref.watch(syncStatusProvider).value;
+                final connected = sync?.connected ?? false;
+                final syncing = sync?.syncing ?? false;
+                final hasErr = sync?.lastError != null;
+                final color = hasErr
+                    ? AppColors.statusExpired
+                    : (connected ? AppColors.statusActive : AppColors.textSecondaryDark);
+                return InkWell(
+                  onTap: () => context.go('/more/sync'),
+                  borderRadius: BorderRadius.circular(14),
                   child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: AppColors.accent,
-                      shape: BoxShape.circle,
+                    width: 44,
+                    height: 44,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: AppTheme.cardDecoration(),
+                    child: Icon(
+                      syncing
+                          ? Icons.sync
+                          : (connected ? Icons.cloud_done_outlined : Icons.cloud_off_outlined),
+                      size: 20,
+                      color: color,
                     ),
                   ),
-                ),
-              ],
+                );
+              },
             ),
-          ),
+            InkWell(
+              onTap: () => context.go('/reminders'),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: AppTheme.cardDecoration(),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(Icons.notifications_none, size: 22, color: AppColors.textPrimaryDark),
+                    Positioned(
+                      top: 10,
+                      right: 11,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: AppColors.accent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

@@ -76,6 +76,7 @@ class CloudSyncService {
   Timer? _debounceTimer;
   Timer? _pollTimer;
   bool _applyingRemote = false;
+  bool _internalSettingWrite = false;
   bool _dirty = false;
   bool _syncInFlight = false;
 
@@ -121,9 +122,10 @@ class CloudSyncService {
           _db.freezes,
           _db.templates,
           _db.messageLog,
+          _db.settingsEntries,
         ]))
         .listen((_) {
-      if (_applyingRemote) return;
+      if (_applyingRemote || _internalSettingWrite) return;
       _dirty = true;
       _debounceTimer?.cancel();
       _debounceTimer = Timer(const Duration(seconds: 2), () {
@@ -180,7 +182,7 @@ class CloudSyncService {
         throw Exception(body['error'] ?? 'Connection failed (${resp.statusCode})');
       }
 
-      await _settings.setAll({
+      await _writeInternalSettings({
         SettingKeys.syncEnabled: '1',
         SettingKeys.syncServerUrl: url,
         SettingKeys.syncWorkspaceId: ws,
@@ -209,7 +211,7 @@ class CloudSyncService {
       }
 
       final nowIso = DateTime.now().toIso8601String();
-      await _settings.setAll({
+      await _writeInternalSettings({
         SettingKeys.syncVersion: '$finalVersion',
         SettingKeys.syncLastAt: nowIso,
       });
@@ -235,11 +237,20 @@ class CloudSyncService {
   }
 
   Future<void> disconnect() async {
-    await _settings.setAll({
+    await _writeInternalSettings({
       SettingKeys.syncEnabled: '0',
     });
     _dirty = false;
     _statusController.add(const SyncStatus(connected: false));
+  }
+
+  Future<void> _writeInternalSettings(Map<String, String> values) async {
+    _internalSettingWrite = true;
+    try {
+      await _settings.setAll(values);
+    } finally {
+      _internalSettingWrite = false;
+    }
   }
 
   /// Synchronizes local database with the Render server.
@@ -292,7 +303,7 @@ class CloudSyncService {
       }
 
       final nowIso = DateTime.now().toIso8601String();
-      await _settings.setAll({
+      await _writeInternalSettings({
         SettingKeys.syncVersion: '$localVersion',
         SettingKeys.syncLastAt: nowIso,
       });
@@ -562,8 +573,11 @@ class CloudSyncService {
     List<Map<String, dynamic>> mergeByKey(
       List? a,
       List? b,
-      String Function(Map<String, dynamic>) keyOf,
-    ) {
+      String Function(Map<String, dynamic>) keyOf, {
+      Map<String, dynamic> Function(
+              Map<String, dynamic> localItem, Map<String, dynamic> remoteItem)?
+          onConflict,
+    }) {
       final map = <String, Map<String, dynamic>>{};
       for (final item in (b ?? const [])) {
         final m = Map<String, dynamic>.from(item as Map);
@@ -571,7 +585,13 @@ class CloudSyncService {
       }
       for (final item in (a ?? const [])) {
         final m = Map<String, dynamic>.from(item as Map);
-        map.putIfAbsent(keyOf(m), () => m);
+        final k = keyOf(m);
+        final existing = map[k];
+        if (existing == null) {
+          map[k] = m;
+        } else if (onConflict != null) {
+          map[k] = onConflict(m, existing);
+        }
       }
       return map.values.toList();
     }
@@ -589,7 +609,7 @@ class CloudSyncService {
         final lSeq = int.tryParse('${m['value'] ?? 0}') ?? 0;
         if (lSeq > rSeq) mergedSettings[k] = m;
       } else {
-        mergedSettings.putIfAbsent(k, () => m);
+        mergedSettings[k] = m;
       }
     }
 
@@ -599,22 +619,30 @@ class CloudSyncService {
       'plans': mergeByKey(
         local['plans'] as List?,
         remote['plans'] as List?,
-        (m) => '${m['id']}:${m['name']}',
+        (m) => '${m['id']}',
+        onConflict: (l, r) => l,
       ),
       'addons': mergeByKey(
         local['addons'] as List?,
         remote['addons'] as List?,
-        (m) => '${m['id']}:${m['name']}',
+        (m) => '${m['id']}',
+        onConflict: (l, r) => l,
       ),
       'members': mergeByKey(
         local['members'] as List?,
         remote['members'] as List?,
         (m) => '${m['memberCode']}',
+        onConflict: (l, r) => l,
       ),
       'subscriptions': mergeByKey(
         local['subscriptions'] as List?,
         remote['subscriptions'] as List?,
         (m) => '${m['id']}:${m['createdAt']}',
+        onConflict: (l, r) {
+          if (l['statusOverride'] != null) return l;
+          if (r['statusOverride'] != null) return r;
+          return l;
+        },
       ),
       'subscriptionAddons': mergeByKey(
         local['subscriptionAddons'] as List?,
@@ -625,16 +653,27 @@ class CloudSyncService {
         local['payments'] as List?,
         remote['payments'] as List?,
         (m) => '${m['id']}:${m['createdAt']}',
+        onConflict: (l, r) {
+          if (l['voided'] == true) return l;
+          if (r['voided'] == true) return r;
+          return l;
+        },
       ),
       'freezes': mergeByKey(
         local['freezes'] as List?,
         remote['freezes'] as List?,
         (m) => '${m['id']}:${m['createdAt']}',
+        onConflict: (l, r) {
+          if (l['endedEarlyOn'] != null) return l;
+          if (r['endedEarlyOn'] != null) return r;
+          return l;
+        },
       ),
       'templates': mergeByKey(
         local['templates'] as List?,
         remote['templates'] as List?,
         (m) => '${m['key']}:${m['language']}',
+        onConflict: (l, r) => l,
       ),
       'messageLog': mergeByKey(
         local['messageLog'] as List?,

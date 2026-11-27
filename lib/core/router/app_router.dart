@@ -21,6 +21,7 @@ import '../../features/more/payments_screen.dart';
 import '../../features/more/plans_screen.dart';
 import '../../features/more/reports_screen.dart';
 import '../../features/more/settings_screen.dart';
+import '../../features/more/sync_screen.dart';
 import '../../features/more/templates_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/reminders/reminders_screen.dart';
@@ -550,6 +551,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                   path: 'backup',
                   name: 'backup',
                   builder: (context, state) => const BackupScreen(),
+                ),
+                GoRoute(
+                  path: 'sync',
+                  name: 'sync',
+                  builder: (context, state) => const SyncScreen(),
                 ),
               ],
             ),

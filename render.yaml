@@ -3,8 +3,18 @@ services:
     name: barbell-therapy
     runtime: node
     plan: free
-    buildCommand: "echo Using prebuilt Flutter web bundle"
+    buildCommand: "npm install"
     startCommand: "node server.js"
     envVars:
       - key: NODE_VERSION
         value: 20
+      - key: DATABASE_URL
+        fromDatabase:
+          name: barbell-therapy-db
+          property: connectionString
+
+databases:
+  - name: barbell-therapy-db
+    plan: free
+    databaseName: barbell_therapy
+    user: barbell_user

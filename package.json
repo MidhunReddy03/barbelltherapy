@@ -1,10 +1,13 @@
 {
   "name": "barbell-therapy-web",
-  "version": "1.0.0",
-  "description": "Barbell Therapy Gym Management Web App",
+  "version": "1.1.0",
+  "description": "Barbell Therapy Gym Management Web App & Multi-Device Sync API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
   },
   "engines": {
     "node": ">=18.0.0"

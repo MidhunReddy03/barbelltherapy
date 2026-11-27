@@ -20,6 +20,7 @@ class _GymDeskAppState extends ConsumerState<GymDeskApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    Future.microtask(() => ref.read(cloudSyncServiceProvider).init());
   }
 
   @override
@@ -39,6 +40,7 @@ class _GymDeskAppState extends ConsumerState<GymDeskApp>
         break;
       case AppLifecycleState.resumed:
         controller.onAppResumed();
+        ref.read(cloudSyncServiceProvider).syncNow(pushLocalChanges: false);
         break;
       case AppLifecycleState.inactive:
         break;

@@ -26,6 +26,12 @@ abstract final class SettingKeys {
   static const lastBackupAt = 'last_backup_at'; // ISO datetime
   static const backupEmail = 'backup_email'; // Gmail address for backup
   static const webThemePreset = 'web_theme_preset'; // Web-only UI theme id
+  static const syncEnabled = 'sync_enabled'; // '0' | '1'
+  static const syncServerUrl = 'sync_server_url';
+  static const syncWorkspaceId = 'sync_workspace_id';
+  static const syncPasscode = 'sync_passcode';
+  static const syncVersion = 'sync_version';
+  static const syncLastAt = 'sync_last_at';
   static const onboardingComplete = 'onboarding_complete'; // '0' | '1'
   static const discountPresets = 'discount_presets'; // JSON array
 }

@@ -15,6 +15,7 @@ import '../../data/repositories/payments_repository.dart';
 import '../../data/repositories/freeze_repository.dart';
 import '../../data/repositories/reminders_repository.dart';
 import '../../data/repositories/settings_repository.dart';
+import '../../data/sync/cloud_sync_service.dart';
 
 // ── Database & repositories ────────────────────────────────────────────────
 
@@ -76,6 +77,19 @@ final messagesComposerProvider = Provider<MessagesComposer>((ref) {
     ref.watch(settingsRepositoryProvider),
     ref.watch(remindersRepositoryProvider),
   );
+});
+
+final cloudSyncServiceProvider = Provider<CloudSyncService>((ref) {
+  final service = CloudSyncService(
+    ref.watch(databaseProvider),
+    ref.watch(settingsRepositoryProvider),
+  );
+  ref.onDispose(service.dispose);
+  return service;
+});
+
+final syncStatusProvider = StreamProvider<SyncStatus>((ref) {
+  return ref.watch(cloudSyncServiceProvider).statusStream;
 });
 
 // ── Enroll catalog streams (shared by enroll + plans screens) ──────────────

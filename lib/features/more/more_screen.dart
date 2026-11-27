@@ -48,9 +48,15 @@ class MoreScreen extends ConsumerWidget {
         route: '/more/templates',
       ),
       const _MoreItem(
+        icon: Icons.cloud_sync_outlined,
+        title: 'Cloud Sync (2 Phones + Web)',
+        subtitle: 'Auto-sync members, plans & payments across all devices',
+        route: '/more/sync',
+      ),
+      const _MoreItem(
         icon: Icons.backup_outlined,
         title: 'Backup & Restore',
-        subtitle: 'Export encrypted offline ZIP snapshot of database',
+        subtitle: 'Export offline ZIP snapshot or send to Gmail',
         route: '/more/backup',
       ),
       const _MoreItem(

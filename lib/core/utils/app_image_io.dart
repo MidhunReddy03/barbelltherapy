@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -14,6 +15,16 @@ import 'image_utils.dart';
 class AppImage {
   AppImage._();
 
+  static Uint8List? _decodeDataUri(String path) {
+    final comma = path.indexOf(',');
+    if (comma < 0) return null;
+    try {
+      return base64Decode(path.substring(comma + 1));
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Displays the stored image, or an empty box when unavailable.
   static Widget view(
     String? path, {
@@ -22,6 +33,17 @@ class AppImage {
     double? height,
   }) {
     if (path == null || path.isEmpty) return const SizedBox.shrink();
+    if (path.startsWith('data:')) {
+      final bytes = _decodeDataUri(path);
+      if (bytes == null) return const SizedBox.shrink();
+      return Image.memory(
+        bytes,
+        fit: fit,
+        width: width,
+        height: height,
+        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+      );
+    }
     return Image.file(
       File(path),
       fit: fit,
@@ -34,12 +56,14 @@ class AppImage {
   /// Synchronous existence check for a stored reference.
   static bool exists(String? path) {
     if (path == null || path.isEmpty) return false;
+    if (path.startsWith('data:')) return _decodeDataUri(path) != null;
     return File(path).existsSync();
   }
 
   /// Reads the bytes behind a stored reference (logo embedding, PDFs).
   static Future<Uint8List?> readBytes(String? path) async {
     if (path == null || path.isEmpty) return null;
+    if (path.startsWith('data:')) return _decodeDataUri(path);
     try {
       return await File(path).readAsBytes();
     } catch (_) {

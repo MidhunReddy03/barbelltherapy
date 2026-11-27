@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:rxdart/rxdart.dart';
 
+import '../../core/utils/app_image.dart';
 import '../../domain/enums.dart';
 import '../database.dart';
 import '../repositories/settings_repository.dart';
@@ -362,6 +363,17 @@ class CloudSyncService {
 
   // ── Snapshot Export / Apply / Smart Merge ────────────────────────────────
 
+  Future<String?> _portableImage(String? path) async {
+    if (path == null || path.isEmpty || path.startsWith('data:')) return path;
+    final bytes = await AppImage.readBytes(path);
+    if (bytes == null || bytes.isEmpty) return null;
+    final lower = path.toLowerCase();
+    final mime = lower.endsWith('.png')
+        ? 'image/png'
+        : (lower.endsWith('.webp') ? 'image/webp' : 'image/jpeg');
+    return 'data:$mime;base64,${base64Encode(bytes)}';
+  }
+
   Future<Map<String, dynamic>> exportSnapshot() async {
     final members = await _db.select(_db.members).get();
     final plans = await _db.select(_db.plans).get();
@@ -374,22 +386,36 @@ class CloudSyncService {
     final templates = await _db.select(_db.templates).get();
     final settings = await _db.select(_db.settingsEntries).get();
 
+    final portableMembers = <Map<String, dynamic>>[];
+    for (final m in members) {
+      final json = m.toJson();
+      json['photoPath'] = await _portableImage(m.photoPath);
+      portableMembers.add(json);
+    }
+
+    final portableSettings = <Map<String, dynamic>>[];
+    for (final s in settings) {
+      if (_localOnlySettingKeys.contains(s.key)) continue;
+      final json = s.toJson();
+      if (s.key == SettingKeys.logoPath || s.key == SettingKeys.qrImagePath) {
+        json['value'] = await _portableImage(s.value);
+      }
+      portableSettings.add(json);
+    }
+
     return {
       'version': 2,
       'exportedAt': DateTime.now().toIso8601String(),
       'plans': plans.map((p) => p.toJson()).toList(),
       'addons': addons.map((a) => a.toJson()).toList(),
-      'members': members.map((m) => m.toJson()).toList(),
+      'members': portableMembers,
       'subscriptions': subscriptions.map((s) => s.toJson()).toList(),
       'subscriptionAddons': subAddons.map((a) => a.toJson()).toList(),
       'payments': payments.map((p) => p.toJson()).toList(),
       'freezes': freezes.map((f) => f.toJson()).toList(),
       'messageLog': messageLog.map((m) => m.toJson()).toList(),
       'templates': templates.map((t) => t.toJson()).toList(),
-      'settings': settings
-          .where((s) => !_localOnlySettingKeys.contains(s.key))
-          .map((s) => s.toJson())
-          .toList(),
+      'settings': portableSettings,
     };
   }
 

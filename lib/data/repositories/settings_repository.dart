@@ -25,6 +25,7 @@ abstract final class SettingKeys {
   static const memberSeq = 'member_seq';
   static const lastBackupAt = 'last_backup_at'; // ISO datetime
   static const backupEmail = 'backup_email'; // Gmail address for backup
+  static const webThemePreset = 'web_theme_preset'; // Web-only UI theme id
   static const onboardingComplete = 'onboarding_complete'; // '0' | '1'
   static const discountPresets = 'discount_presets'; // JSON array
 }

@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/web_themes.dart';
 import '../../core/utils/hash_utils.dart';
 import '../../data/database.dart';
 import '../../data/repositories/catalog_repository.dart';
@@ -141,6 +142,12 @@ final themeModeProvider = Provider<ThemeMode>((ref) {
     default:
       return ThemeMode.dark;
   }
+});
+
+/// Website-only UI theme preset (persisted in settings, ignored on native).
+final webThemePresetProvider = Provider<WebThemePreset>((ref) {
+  final map = ref.watch(settingsMapProvider).value ?? const {};
+  return WebThemePreset.fromId(map[SettingKeys.webThemePreset]);
 });
 
 // ── App lock state ─────────────────────────────────────────────────────────

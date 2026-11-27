@@ -1,16 +1,21 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/providers/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/web_themes.dart';
+import '../../data/repositories/settings_repository.dart';
 
 /// "More" hub: Plans & Add-ons, Payments & Dues, Announcements,
 /// Reports, Message Templates, Backup & Restore, Settings.
-class MoreScreen extends StatelessWidget {
+class MoreScreen extends ConsumerWidget {
   const MoreScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final items = <_MoreItem>[
       const _MoreItem(
         icon: Icons.card_membership_outlined,
@@ -71,17 +76,93 @@ class MoreScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: ListView.separated(
+      body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (context, i) {
-          final item = items[i];
-          return _MoreTile(
-            item: item,
-            onTap: () => context.go(item.route),
-          );
-        },
+        children: [
+          if (kIsWeb) ...[
+            _WebThemePickerCard(ref: ref),
+            const SizedBox(height: 14),
+          ],
+          for (int i = 0; i < items.length; i++) ...[
+            if (i > 0) const SizedBox(height: 10),
+            _MoreTile(
+              item: items[i],
+              onTap: () => context.go(items[i].route),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _WebThemePickerCard extends StatelessWidget {
+  const _WebThemePickerCard({required this.ref});
+
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context) {
+    final current = ref.watch(webThemePresetProvider);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: current.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: current.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('WEBSITE UI THEME', style: AppTheme.cap(color: current.textSecondary)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final preset in WebThemePreset.values)
+                InkWell(
+                  onTap: () => ref
+                      .read(settingsRepositoryProvider)
+                      .set(SettingKeys.webThemePreset, preset.id),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: preset == current ? preset.surfaceRaised : current.bg,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: preset == current ? preset.accent : current.border,
+                        width: preset == current ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: preset.accent,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          preset.name,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: preset == current ? FontWeight.w700 : FontWeight.w500,
+                            color: current.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

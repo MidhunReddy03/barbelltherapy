@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/providers/providers.dart';
@@ -562,26 +563,38 @@ class _EnrollScreenState extends ConsumerState<EnrollScreen> {
           error: (e, _) => Text('Could not load plans: $e'),
           data: (plans) => plans.isEmpty
               ? const Text('No active plans — add one in Plans & Add-ons.')
-              : GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    childAspectRatio: 1.25,
-                  ),
-                  itemCount: plans.length,
-                  itemBuilder: (context, i) {
-                    final plan = plans[i];
-                    return _PlanCard(
-                      plan: plan,
-                      selected: _draft.plan?.id == plan.id,
-                      onTap: () => setState(() {
-                        _draft = _draft.copyWith(plan: plan);
-                        _amountController.text =
-                            '${_draft.pricing?.total ?? plan.price}';
-                      }),
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final cols = kIsWeb && constraints.maxWidth >= 680 ? 4 : 2;
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: kIsWeb
+                          ? SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: cols,
+                              mainAxisSpacing: 10,
+                              crossAxisSpacing: 10,
+                              mainAxisExtent: 124,
+                            )
+                          : const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 10,
+                              crossAxisSpacing: 10,
+                              childAspectRatio: 1.25,
+                            ),
+                      itemCount: plans.length,
+                      itemBuilder: (context, i) {
+                        final plan = plans[i];
+                        return _PlanCard(
+                          plan: plan,
+                          selected: _draft.plan?.id == plan.id,
+                          onTap: () => setState(() {
+                            _draft = _draft.copyWith(plan: plan);
+                            _amountController.text =
+                                '${_draft.pricing?.total ?? plan.price}';
+                          }),
+                        );
+                      },
                     );
                   },
                 ),

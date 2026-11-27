@@ -1,6 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/theme/web_themes.dart';
+import '../../data/repositories/settings_repository.dart';
 
 import '../../features/auth_lock/lock_screen.dart';
 import '../../features/home/home_screen.dart';
@@ -20,24 +26,67 @@ import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/reminders/reminders_screen.dart';
 import '../providers/providers.dart';
 
-import '../../core/theme/app_colors.dart';
-
-/// Navigation shell matching the HTML design (.nav and .nb):
-/// height 76px, background #1F2226, top border #32373D, active top bar indicator #D98A5B.
-class AppShell extends StatelessWidget {
+/// Navigation shell matching the HTML design (.nav and .nb) on mobile,
+/// and a responsive sidebar + centered workspace ONLY on desktop web (`kIsWeb`).
+class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final width = MediaQuery.sizeOf(context).width;
+    if (kIsWeb && width >= 820) {
+      final preset = ref.watch(webThemePresetProvider);
+      final gymName = ref.watch(gymNameProvider);
+      return Scaffold(
+        backgroundColor: preset.bg,
+        body: Row(
+          children: [
+            _WebSidebar(
+              shell: shell,
+              preset: preset,
+              gymName: gymName,
+              onSelectTheme: (p) => ref
+                  .read(settingsRepositoryProvider)
+                  .set(SettingKeys.webThemePreset, p.id),
+            ),
+            Expanded(
+              child: Container(
+                color: preset.bg,
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1080),
+                  child: shell,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final preset = kIsWeb ? ref.watch(webThemePresetProvider) : null;
+    final navBg = preset?.surface ?? AppColors.surfaceDark;
+    final navBorder = preset?.border ?? AppColors.borderDark;
+    final activeColor = preset?.accentHighlight ?? AppColors.accentHighlight;
+    final indicatorColor = preset?.accent ?? AppColors.accent;
+    final inactiveColor = preset?.textSecondary ?? AppColors.textSecondaryDark;
+
     return Scaffold(
-      body: shell,
+      body: kIsWeb
+          ? Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 680),
+                child: shell,
+              ),
+            )
+          : shell,
       bottomNavigationBar: Container(
         height: 76,
-        decoration: const BoxDecoration(
-          color: AppColors.surfaceDark,
-          border: Border(top: BorderSide(color: AppColors.borderDark)),
+        decoration: BoxDecoration(
+          color: navBg,
+          border: Border(top: BorderSide(color: navBorder)),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 6),
         child: Row(
@@ -49,6 +98,9 @@ class AppShell extends StatelessWidget {
               icon: Icons.dashboard_outlined,
               activeIcon: Icons.dashboard,
               isSelected: shell.currentIndex == 0,
+              activeColor: activeColor,
+              indicatorColor: indicatorColor,
+              inactiveColor: inactiveColor,
               onTap: () => shell.goBranch(0, initialLocation: shell.currentIndex == 0),
             ),
             _NavItem(
@@ -57,6 +109,9 @@ class AppShell extends StatelessWidget {
               icon: Icons.groups_outlined,
               activeIcon: Icons.groups,
               isSelected: shell.currentIndex == 1,
+              activeColor: activeColor,
+              indicatorColor: indicatorColor,
+              inactiveColor: inactiveColor,
               onTap: () => shell.goBranch(1, initialLocation: shell.currentIndex == 1),
             ),
             _NavItem(
@@ -65,6 +120,9 @@ class AppShell extends StatelessWidget {
               icon: Icons.notifications_outlined,
               activeIcon: Icons.notifications,
               isSelected: shell.currentIndex == 2,
+              activeColor: activeColor,
+              indicatorColor: indicatorColor,
+              inactiveColor: inactiveColor,
               onTap: () => shell.goBranch(2, initialLocation: shell.currentIndex == 2),
             ),
             _NavItem(
@@ -73,10 +131,215 @@ class AppShell extends StatelessWidget {
               icon: Icons.menu,
               activeIcon: Icons.menu,
               isSelected: shell.currentIndex == 3,
+              activeColor: activeColor,
+              indicatorColor: indicatorColor,
+              inactiveColor: inactiveColor,
               onTap: () => shell.goBranch(3, initialLocation: shell.currentIndex == 3),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _WebSidebar extends StatelessWidget {
+  const _WebSidebar({
+    required this.shell,
+    required this.preset,
+    required this.gymName,
+    required this.onSelectTheme,
+  });
+
+  final StatefulNavigationShell shell;
+  final WebThemePreset preset;
+  final String gymName;
+  final ValueChanged<WebThemePreset> onSelectTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final navItems = const [
+      (0, 'Home', Icons.dashboard_outlined, Icons.dashboard),
+      (1, 'Members', Icons.groups_outlined, Icons.groups),
+      (2, 'Reminders', Icons.notifications_outlined, Icons.notifications),
+      (3, 'More', Icons.tune_outlined, Icons.tune),
+    ];
+
+    return Container(
+      width: 256,
+      decoration: BoxDecoration(
+        color: preset.surface,
+        border: Border(right: BorderSide(color: preset.border)),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: preset.accent.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: preset.accent.withValues(alpha: 0.5)),
+                ),
+                child: Icon(Icons.fitness_center, color: preset.accent, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'BARBELL THERAPY',
+                      style: AppTheme.dsp(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: preset.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      gymName,
+                      style: TextStyle(fontSize: 11, color: preset.textSecondary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: ElevatedButton.icon(
+              onPressed: () => context.go('/members/enroll'),
+              icon: Icon(Icons.person_add_alt_1, size: 18, color: preset.onAccent),
+              label: Text(
+                'Enroll Member',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: preset.onAccent,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: preset.accent,
+                foregroundColor: preset.onAccent,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text('NAVIGATION', style: AppTheme.cap(color: preset.textSecondary)),
+          const SizedBox(height: 8),
+          for (final (idx, label, icon, activeIcon) in navItems) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Material(
+                color: shell.currentIndex == idx
+                    ? preset.accent.withValues(alpha: 0.14)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+                child: InkWell(
+                  onTap: () => shell.goBranch(idx, initialLocation: shell.currentIndex == idx),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: shell.currentIndex == idx
+                            ? preset.accent.withValues(alpha: 0.45)
+                            : Colors.transparent,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          shell.currentIndex == idx ? activeIcon : icon,
+                          size: 20,
+                          color: shell.currentIndex == idx
+                              ? preset.accentHighlight
+                              : preset.textSecondary,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: shell.currentIndex == idx
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: shell.currentIndex == idx
+                                ? preset.textPrimary
+                                : preset.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+          const Spacer(),
+          Text('WEBSITE THEME', style: AppTheme.cap(color: preset.textSecondary)),
+          const SizedBox(height: 8),
+          for (final item in WebThemePreset.values) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: InkWell(
+                onTap: () => onSelectTheme(item),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: item == preset ? preset.surfaceRaised : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: item == preset ? preset.accent : Colors.transparent,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: item.accent,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white24),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          item.name,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: item == preset ? FontWeight.w600 : FontWeight.w400,
+                            color: item == preset ? preset.textPrimary : preset.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (item == preset)
+                        Icon(Icons.check, size: 14, color: preset.accentHighlight),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -89,6 +352,9 @@ class _NavItem extends StatelessWidget {
     required this.icon,
     required this.activeIcon,
     required this.isSelected,
+    required this.activeColor,
+    required this.indicatorColor,
+    required this.inactiveColor,
     required this.onTap,
   });
 
@@ -97,11 +363,14 @@ class _NavItem extends StatelessWidget {
   final IconData icon;
   final IconData activeIcon;
   final bool isSelected;
+  final Color activeColor;
+  final Color indicatorColor;
+  final Color inactiveColor;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final fg = isSelected ? AppColors.accentHighlight : AppColors.textSecondaryDark;
+    final fg = isSelected ? activeColor : inactiveColor;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -112,13 +381,13 @@ class _NavItem extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Top active indicator bar (28x3px in #D98A5B)
+            // Top active indicator bar (28x3px)
             Container(
               width: 28,
               height: 3,
               margin: const EdgeInsets.only(bottom: 6),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.accent : Colors.transparent,
+                color: isSelected ? indicatorColor : Colors.transparent,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -164,12 +433,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/onboarding',
         name: 'onboarding',
-        builder: (context, state) => const OnboardingScreen(),
+        builder: (context, state) => kIsWeb
+            ? Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 640),
+                  child: const OnboardingScreen(),
+                ),
+              )
+            : const OnboardingScreen(),
       ),
       GoRoute(
         path: '/lock',
         name: 'lock',
-        builder: (context, state) => const LockScreen(),
+        builder: (context, state) => kIsWeb
+            ? Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: const LockScreen(),
+                ),
+              )
+            : const LockScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => AppShell(shell: shell),

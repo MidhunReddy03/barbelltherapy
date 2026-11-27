@@ -48,14 +48,15 @@ class _GymDeskAppState extends ConsumerState<GymDeskApp>
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
+    final webPreset = ref.watch(webThemePresetProvider);
     // Router rebuilds on lock/onboarding changes and re-evaluates redirects.
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'GymDesk',
+      title: 'Barbell Therapy',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      darkTheme: kIsWeb ? AppTheme.darkForWeb(webPreset) : AppTheme.dark(),
       themeMode: themeMode,
       routerConfig: router,
       builder: (context, child) {
@@ -83,7 +84,13 @@ class _GymDeskAppState extends ConsumerState<GymDeskApp>
           }
           return ErrorWidget(details.exception);
         };
-        return child ?? const SizedBox.shrink();
+        if (!kIsWeb) {
+          return child ?? const SizedBox.shrink();
+        }
+        return Container(
+          color: webPreset.bg,
+          child: child ?? const SizedBox.shrink(),
+        );
       },
     );
   }

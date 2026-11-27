@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -32,8 +33,11 @@ class HomeScreen extends ConsumerWidget {
             : 'Good evening';
     final dateStr = DateFormat('EEE d MMM').format(now);
 
+    final showFloatingEnroll =
+        !(kIsWeb && MediaQuery.sizeOf(context).width >= 820);
+
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: kIsWeb ? Theme.of(context).scaffoldBackgroundColor : AppColors.bgDark,
       body: SafeArea(
         child: statsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator(color: AppColors.accent)),
@@ -55,13 +59,18 @@ class HomeScreen extends ConsumerWidget {
             child: Stack(
               children: [
                 ListView(
-                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 90),
+                  padding: EdgeInsets.fromLTRB(
+                    kIsWeb ? 24 : 18,
+                    kIsWeb ? 20 : 16,
+                    kIsWeb ? 24 : 18,
+                    90,
+                  ),
                   children: [
                     // Top Bar Header
                     _Header(dateStr: dateStr, greeting: greeting, gymName: gymName),
                     const SizedBox(height: 14),
 
-                    // 2x2 Metric Stat Grid
+                    // Responsive Metric Stat Grid
                     _StatGrid(stats: stats),
                     const SizedBox(height: 12),
 
@@ -81,13 +90,14 @@ class HomeScreen extends ConsumerWidget {
                   ],
                 ),
 
+                if (showFloatingEnroll)
                 // Floating Enroll Button matching HTML design:
                 // height 50px, border-radius 25px, background #D98A5B, text #17191C, bold
                 Positioned(
                   right: 18,
                   bottom: 18,
                   child: Material(
-                    color: AppColors.accent,
+                    color: Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(25),
                     elevation: 6,
                     shadowColor: Colors.black.withValues(alpha: 0.4),
@@ -100,14 +110,14 @@ class HomeScreen extends ConsumerWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.person_add_alt_1, size: 20, color: AppColors.onAccent),
+                            Icon(Icons.person_add_alt_1, size: 20, color: Theme.of(context).colorScheme.onPrimary),
                             const SizedBox(width: 8),
                             Text(
                               'Enroll',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.onAccent,
+                                color: Theme.of(context).colorScheme.onPrimary,
                               ),
                             ),
                           ],
@@ -199,6 +209,64 @@ class _StatGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cards = [
+      // Active
+      _MetricCard(
+        dotColor: AppColors.statusActive,
+        capLabel: 'ACTIVE',
+        value: '${stats.activeMembers}',
+        subtitle: '+${stats.joinedThisMonth} this month',
+        subtitleColor: AppColors.statusActive,
+        onTap: () => context.go('/members'),
+      ),
+      // Expiring this week
+      _MetricCard(
+        dotColor: AppColors.statusExpiring,
+        capLabel: 'EXPIRING THIS WEEK',
+        value: '${stats.expiringThisWeek}',
+        valueColor: AppColors.statusExpiring,
+        subtitle: 'Tap to view',
+        subtitleColor: AppColors.textSecondaryDark,
+        onTap: () => context.go('/members'),
+      ),
+      // Today
+      _MetricCard(
+        capLabel: 'TODAY',
+        value: AppFormatters.money(stats.todaysCollection),
+        subtitle: '${stats.todayPaymentCount} payments',
+        subtitleColor: AppColors.textSecondaryDark,
+        onTap: () => context.go('/more/payments'),
+      ),
+      // This month
+      _MetricCard(
+        capLabel: 'THIS MONTH',
+        value: AppFormatters.money(stats.monthRevenue),
+        subtitle: '+${stats.joinedThisMonth} new joins',
+        subtitleColor: AppColors.statusActive,
+        onTap: () => context.go('/more/payments'),
+      ),
+    ];
+
+    if (kIsWeb) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final cols = constraints.maxWidth >= 700 ? 4 : 2;
+          return GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: cols,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              mainAxisExtent: 128,
+            ),
+            itemCount: cards.length,
+            itemBuilder: (_, i) => cards[i],
+          );
+        },
+      );
+    }
+
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -206,43 +274,7 @@ class _StatGrid extends StatelessWidget {
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
       childAspectRatio: 1.55,
-      children: [
-        // Active
-        _MetricCard(
-          dotColor: AppColors.statusActive,
-          capLabel: 'ACTIVE',
-          value: '${stats.activeMembers}',
-          subtitle: '+${stats.joinedThisMonth} this month',
-          subtitleColor: AppColors.statusActive,
-          onTap: () => context.go('/members'),
-        ),
-        // Expiring this week
-        _MetricCard(
-          dotColor: AppColors.statusExpiring,
-          capLabel: 'EXPIRING THIS WEEK',
-          value: '${stats.expiringThisWeek}',
-          valueColor: AppColors.statusExpiring,
-          subtitle: 'Tap to view',
-          subtitleColor: AppColors.textSecondaryDark,
-          onTap: () => context.go('/members'),
-        ),
-        // Today
-        _MetricCard(
-          capLabel: 'TODAY',
-          value: AppFormatters.money(stats.todaysCollection),
-          subtitle: '${stats.todayPaymentCount} payments',
-          subtitleColor: AppColors.textSecondaryDark,
-          onTap: () => context.go('/more/payments'),
-        ),
-        // This month
-        _MetricCard(
-          capLabel: 'THIS MONTH',
-          value: AppFormatters.money(stats.monthRevenue),
-          subtitle: '+${stats.joinedThisMonth} new joins',
-          subtitleColor: AppColors.statusActive,
-          onTap: () => context.go('/more/payments'),
-        ),
-      ],
+      children: cards,
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
+import 'web_themes.dart';
 
 /// Builds the app ThemeData for dark (default) and light themes, matching
 /// the GymDesk App Screens design (Barlow Condensed + Inter + Noto Sans Telugu).
@@ -65,24 +66,54 @@ class AppTheme {
   static ThemeData dark() => _build(Brightness.dark);
   static ThemeData light() => _build(Brightness.light);
 
-  static ThemeData _build(Brightness brightness) {
+  /// Website-only themed dark ThemeData using the selected [WebThemePreset].
+  static ThemeData darkForWeb(WebThemePreset preset) => _build(
+        Brightness.dark,
+        customBg: preset.bg,
+        customSurface: preset.surface,
+        customSurfaceRaised: preset.surfaceRaised,
+        customBorder: preset.border,
+        customAccent: preset.accent,
+        customAccentHighlight: preset.accentHighlight,
+        customOnAccent: preset.onAccent,
+        customTextPrimary: preset.textPrimary,
+        customTextSecondary: preset.textSecondary,
+      );
+
+  static ThemeData _build(
+    Brightness brightness, {
+    Color? customBg,
+    Color? customSurface,
+    Color? customSurfaceRaised,
+    Color? customBorder,
+    Color? customAccent,
+    Color? customAccentHighlight,
+    Color? customOnAccent,
+    Color? customTextPrimary,
+    Color? customTextSecondary,
+  }) {
     final isDark = brightness == Brightness.dark;
-    final bg = isDark ? AppColors.bgDark : AppColors.bgLight;
-    final surface = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
-    final surfaceRaised =
-        isDark ? AppColors.surfaceRaisedDark : AppColors.surfaceRaisedLight;
-    final border = isDark ? AppColors.borderDark : AppColors.borderLight;
-    final textPrimary =
-        isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
-    final textSecondary =
-        isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
+    final bg = customBg ?? (isDark ? AppColors.bgDark : AppColors.bgLight);
+    final surface =
+        customSurface ?? (isDark ? AppColors.surfaceDark : AppColors.surfaceLight);
+    final surfaceRaised = customSurfaceRaised ??
+        (isDark ? AppColors.surfaceRaisedDark : AppColors.surfaceRaisedLight);
+    final border =
+        customBorder ?? (isDark ? AppColors.borderDark : AppColors.borderLight);
+    final textPrimary = customTextPrimary ??
+        (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight);
+    final textSecondary = customTextSecondary ??
+        (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight);
+    final accent = customAccent ?? AppColors.accent;
+    final accentHighlight = customAccentHighlight ?? AppColors.accentHighlight;
+    final onAccent = customOnAccent ?? AppColors.onAccent;
 
     final colorScheme = ColorScheme(
       brightness: brightness,
-      primary: AppColors.accent,
-      onPrimary: AppColors.onAccent,
-      secondary: AppColors.accentHighlight,
-      onSecondary: AppColors.onAccent,
+      primary: accent,
+      onPrimary: onAccent,
+      secondary: accentHighlight,
+      onSecondary: onAccent,
       error: AppColors.statusExpired,
       onError: Colors.white,
       surface: surface,
@@ -142,11 +173,11 @@ class AppTheme {
         }),
       ),
       dividerTheme: DividerThemeData(color: border, thickness: 1),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: AppColors.accent,
-        foregroundColor: AppColors.onAccent,
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: accent,
+        foregroundColor: onAccent,
         elevation: 6,
-        shape: RoundedRectangleBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(16)),
         ),
       ),
@@ -164,19 +195,19 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+          borderSide: BorderSide(color: accent, width: 1.5),
         ),
         hintStyle: TextStyle(fontSize: 14, color: textSecondary),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return AppColors.onAccent;
+            return onAccent;
           }
           return textSecondary;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return AppColors.accent;
+          if (states.contains(WidgetState.selected)) return accent;
           return surfaceRaised;
         }),
       ),
